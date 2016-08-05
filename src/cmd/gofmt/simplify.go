@@ -28,30 +28,42 @@ func (s simplifier) Visit(node ast.Node) ast.Visitor {
 		if eltType != nil {
 			typ := reflect.ValueOf(eltType)
 			for i, x := range outer.Elts {
-				px := &outer.Elts[i]
-				// look at value of indexed/named elements
+
+				pxs := []*ast.Expr{&outer.Elts[i]}
+
+				// list of expressions to look at later
+				xs := []ast.Expr{x}
+
+				// look at both the key and the value of indexed/named elements
 				if t, ok := x.(*ast.KeyValueExpr); ok {
-					x = t.Value
-					px = &t.Value
+					xs = []ast.Expr{t.Value, t.Key}
+					pxs = []*ast.Expr{&t.Value, &t.Key}
 				}
-				ast.Walk(s, x) // simplify x
-				// if the element is a composite literal and its literal type
-				// matches the outer literal's element type exactly, the inner
-				// literal type may be omitted
-				if inner, ok := x.(*ast.CompositeLit); ok {
-					if match(nil, typ, reflect.ValueOf(inner.Type)) {
-						inner.Type = nil
+
+				for ii, x := range xs {
+					ast.Walk(s, x) // simplify x
+
+					px := pxs[ii]
+
+					// if the element is a composite literal and its literal type
+					// matches the outer literal's element type exactly, the inner
+					// literal type may be omitted
+					if inner, ok := x.(*ast.CompositeLit); ok {
+						if match(nil, typ, reflect.ValueOf(inner.Type)) {
+							inner.Type = nil
+						}
 					}
-				}
-				// if the outer literal's element type is a pointer type *T
-				// and the element is & of a composite literal of type T,
-				// the inner &T may be omitted.
-				if ptr, ok := eltType.(*ast.StarExpr); ok {
-					if addr, ok := x.(*ast.UnaryExpr); ok && addr.Op == token.AND {
-						if inner, ok := addr.X.(*ast.CompositeLit); ok {
-							if match(nil, reflect.ValueOf(ptr.X), reflect.ValueOf(inner.Type)) {
-								inner.Type = nil // drop T
-								*px = inner      // drop &
+
+					// if the outer literal's element type is a pointer type *T
+					// and the element is & of a composite literal of type T,
+					// the inner &T may be omitted.
+					if ptr, ok := eltType.(*ast.StarExpr); ok {
+						if addr, ok := x.(*ast.UnaryExpr); ok && addr.Op == token.AND {
+							if inner, ok := addr.X.(*ast.CompositeLit); ok {
+								if match(nil, reflect.ValueOf(ptr.X), reflect.ValueOf(inner.Type)) {
+									inner.Type = nil // drop T
+									*px = inner      // drop &
+								}
 							}
 						}
 					}
