@@ -515,3 +515,17 @@ func TestDecodeWithPadding(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeWithWrongPadding(t *testing.T) {
+	encoded := StdEncoding.EncodeToString([]byte("foobar"))
+
+	_, err := StdEncoding.WithPadding('-').DecodeString(encoded)
+	if err == nil {
+		t.Error("Decoding message with unexpected padding (-) did not return error")
+	}
+
+	_, err = StdEncoding.WithPadding(NoPadding).DecodeString(encoded)
+	if err == nil {
+		t.Error("Decoding message with unexpected padding (-) did not return error")
+	}
+}
