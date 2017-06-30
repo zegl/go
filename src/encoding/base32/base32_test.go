@@ -490,3 +490,28 @@ func TestWithoutPadding(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeWithPadding(t *testing.T) {
+	encodings := []*Encoding{
+		StdEncoding,
+		StdEncoding.WithPadding('-'),
+		StdEncoding.WithPadding(NoPadding),
+	}
+
+	for i, enc := range encodings {
+		for _, pair := range pairs {
+
+			input := pair.decoded
+			encoded := enc.EncodeToString([]byte(input))
+
+			decoded, err := enc.DecodeString(encoded)
+			if err != nil {
+				t.Errorf("DecodeString Error for encoding %d (%s): %v", i, input, err)
+			}
+
+			if input != string(decoded) {
+				t.Errorf("Unexpected result for encoding %d: expected '%s' got '%s'", i, input, string(decoded))
+			}
+		}
+	}
+}
