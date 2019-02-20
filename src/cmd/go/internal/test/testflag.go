@@ -7,6 +7,7 @@ package test
 import (
 	"flag"
 	"os"
+	"io/ioutil"
 	"strings"
 
 	"cmd/go/internal/base"
@@ -30,6 +31,7 @@ var testFlagDefn = []*cmdflag.Defn{
 	{Name: "i", BoolVar: &cfg.BuildI},
 	{Name: "o"},
 	{Name: "cover", BoolVar: &testCover},
+	{Name: "coverhtml"},
 	{Name: "covermode"},
 	{Name: "coverpkg"},
 	{Name: "exec"},
@@ -162,6 +164,17 @@ func testFlags(usage func(), args []string) (packageNames, passToTest []string) 
 				testNeedBinary = true
 			case "trace":
 				testProfile = "-trace"
+			case "coverhtml":
+				testCover = true
+				testCoverHtml = value
+
+				tmpDir, err := ioutil.TempDir("", "coverage")
+				if err != nil {
+					base.Fatalf("could not create temprary file for coverhtml: %v", err)
+				}
+				// Append to args, this runs the coverprofile case below, and
+				// and makes sure that this arg is forwarded properly to sub commands
+				args = append(args, "-coverprofile", tmpDir + "/coverage.profile")
 			case "coverpkg":
 				testCover = true
 				if value == "" {

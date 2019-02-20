@@ -306,6 +306,10 @@ profile the tests during execution:
 	    Write a coverage profile to the file after all tests have passed.
 	    Sets -cover.
 
+	-coverhtml cover.html
+	    Create a HTML coverage report to the file after all tests have passed.
+	    Sets -cover and -coverprofile.
+
 	-cpuprofile cpu.out
 	    Write a CPU profile to the specified file before exiting.
 	    Writes test binary as -c would.
@@ -465,6 +469,7 @@ See the documentation of the testing package for more information.
 var (
 	testC            bool            // -c flag
 	testCover        bool            // -cover flag
+	testCoverHtml    string          // -coverhtml flag
 	testCoverMode    string          // -covermode flag
 	testCoverPaths   []string        // -coverpkg flag
 	testCoverPkgs    []*load.Package // -coverpkg flag
@@ -744,6 +749,15 @@ func runTest(cmd *base.Command, args []string) {
 	}
 
 	b.Do(root)
+
+	// Create a HTML coverage report
+	if testCoverHtml != "" {
+		err := createHTMLCoverage()
+		if err != nil {
+			fmt.Fprint(os.Stderr, "go test -coverhtml: %s", err)
+			base.SetExitStatus(1)
+		}
+	}
 }
 
 // ensures that package p imports the named package
@@ -1615,5 +1629,33 @@ func builderNoTest(b *work.Builder, a *work.Action) error {
 		stdout = json
 	}
 	fmt.Fprintf(stdout, "?   \t%s\t[no test files]\n", a.Package.ImportPath)
+	return nil
+}
+
+// createHTMLCoverage executes the cover tool and creates a html coverage report
+func createHTMLCoverage() error {
+	coverToolPath := base.Tool("cover")
+	if coverToolPath == "" {
+		return fmt.Errorf("cover tool not found")
+	}
+
+	coverToolCmd := &exec.Cmd{
+		Path: coverToolPath,
+		Args: []string{
+			coverToolPath,
+			"-html", testCoverProfile,
+			"-o", testCoverHtml,
+		},
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Env:    base.MergeEnvLists([]string{"GOROOT=" + cfg.GOROOT}, os.Environ()),
+	}
+
+	err := coverToolCmd.Run()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
